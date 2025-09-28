@@ -7,16 +7,18 @@
     <style>
         body {
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #ffebee;
             font-family: 'Arial', sans-serif;
-            overflow: hidden;
+            overflow: auto;
         }
         .container {
             text-align: center;
+            margin-bottom: 20px;
         }
         h1 {
             color: #d32f2f;
@@ -73,6 +75,16 @@
                 box-shadow: 0 0 20px #ff4d4d, 0 0 40px #ff4d4d;
             }
         }
+        .input-section {
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            padding: 10px;
+            font-size: 16px;
+            border: 2px solid #d32f2f;
+            border-radius: 5px;
+            width: 200px;
+        }
         .buttons {
             margin-top: 20px;
         }
@@ -83,7 +95,7 @@
             border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
-            transition: transform 0.3s ease, font-size 0.3s ease;
+            transition: transform 0.3s ease;
         }
         .yes-button {
             background-color: #4caf50;
@@ -93,32 +105,76 @@
             background-color: #f44336;
             color: white;
         }
-        .zoom-fullscreen {
-            animation: zoomIn 1s forwards;
+        .yes-button:hover, .no-button:hover {
+            transform: scale(1.1);
         }
-        @keyframes zoomIn {
-            0% {
-                transform: scale(1);
-            }
-            100% {
-                transform: scale(20);
-                opacity: 0;
-            }
+        .results {
+            margin-top: 40px;
+            text-align: center;
+        }
+        .results h2 {
+            color: #d32f2f;
+        }
+        .vote-list {
+            display: inline-block;
+            margin: 0 20px;
+            text-align: left;
+        }
+        .vote-list ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .vote-list li {
+            background: #fff;
+            margin: 5px 0;
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .reset-button {
+            padding: 10px 20px;
+            margin-top: 20px;
+            border: none;
+            border-radius: 5px;
+            background-color: #ff9800;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .reset-button:hover {
+            background-color: #e68900;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Will you be my Valentine?</h1>
+        <h1>Will you be my lover?</h1>
         <div class="heart"></div>
+        <div class="input-section">
+            <input type="text" id="nameInput" placeholder="Enter your name to vote">
+        </div>
         <div class="buttons">
             <button class="yes-button" onclick="handleYesClick()">Yes</button>
             <button class="no-button" onclick="handleNoClick()">No</button>
         </div>
     </div>
+    <div class="results">
+        <h2>Voting Results</h2>
+        <div class="vote-section">
+            <div class="vote-list">
+                <h3>Yes: <span id="yesCount">0</span></h3>
+                <ul id="yesList"></ul>
+            </div>
+            <div class="vote-list">
+                <h3>No: <span id="noCount">0</span></h3>
+                <ul id="noList"></ul>
+            </div>
+        </div>
+        <button class="reset-button" onclick="resetVotes()">Reset All Votes</button>
+    </div>
     <div id="success-message" style="display: none !important; position: fixed !important; top: 0 !important; left: 0 !important; width: 100% !important; height: 100% !important; background-color: rgba(0,0,0,0.8) !important; z-index: 9999 !important; justify-content: center !important; align-items: center !important;">
         <div style="background-color: #ffebee; padding: 20px; border-radius: 10px; text-align: center; color: #d32f2f; font-size: 2rem; position: relative; max-width: 90%; max-height: 90%;">
-            <h1>Yay! You are my Valentine! 💕</h1>
+            <h1>Yay! You are my lover?! 💕</h1>
             <div class="heart" style="margin: 20px auto;"></div>
             <button onclick="closeOverlay()" style="position: absolute; top: 10px; right: 10px; background: #f44336; color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-size: 16px;">×</button>
         </div>
@@ -133,9 +189,70 @@
         ];
         let messageIndex = 0;
 
+        function loadVotes() {
+            const yesVotes = JSON.parse(localStorage.getItem('yesVotes')) || [];
+            const noVotes = JSON.parse(localStorage.getItem('noVotes')) || [];
+            return { yesVotes, noVotes };
+        }
+
+        function saveVotes(yesVotes, noVotes) {
+            localStorage.setItem('yesVotes', JSON.stringify(yesVotes));
+            localStorage.setItem('noVotes', JSON.stringify(noVotes));
+        }
+
+        function updateDisplay() {
+            const { yesVotes, noVotes } = loadVotes();
+            document.getElementById('yesCount').textContent = yesVotes.length;
+            document.getElementById('noCount').textContent = noVotes.length;
+
+            const yesList = document.getElementById('yesList');
+            const noList = document.getElementById('noList');
+
+            yesList.innerHTML = '';
+            noList.innerHTML = '';
+
+            yesVotes.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                yesList.appendChild(li);
+            });
+
+            noVotes.forEach(name => {
+                const li = document.createElement('li');
+                li.textContent = name;
+                noList.appendChild(li);
+            });
+        }
+
+        function recordVote(vote) {
+            const name = document.getElementById('nameInput').value.trim();
+            if (!name) {
+                return; // Skip voting if no name, but allow original behavior
+            }
+
+            const { yesVotes, noVotes } = loadVotes();
+
+            if (yesVotes.includes(name) || noVotes.includes(name)) {
+                return; // Already voted, skip
+            }
+
+            if (vote === 'yes') {
+                yesVotes.push(name);
+            } else {
+                noVotes.push(name);
+            }
+
+            saveVotes(yesVotes, noVotes);
+            updateDisplay();
+            document.getElementById('nameInput').value = '';
+        }
+
         function handleNoClick() {
             const noButton = document.querySelector(".no-button");
             const yesButton = document.querySelector(".yes-button");
+
+            // Record vote if applicable
+            recordVote('no');
 
             noButton.textContent = messages[messageIndex];
             messageIndex = (messageIndex + 1) % messages.length;
@@ -145,17 +262,28 @@
         }
 
         function handleYesClick() {
+            // Record vote if applicable
+            recordVote('yes');
+
             const yesButton = document.querySelector(".yes-button");
             yesButton.classList.add("zoom-fullscreen");
             setTimeout(() => {
                 const overlay = document.getElementById("success-message");
                 overlay.style.display = "flex";
-                overlay.style.visibility = "visible"; // Ensure visibility in webviews
-            }, 1000); // Adjust timeout to match animation duration
+                overlay.style.visibility = "visible";
+            }, 1000);
         }
 
         function closeOverlay() {
             document.getElementById("success-message").style.display = "none";
+        }
+
+        function resetVotes() {
+            if (confirm('Are you sure you want to reset all votes?')) {
+                localStorage.removeItem('yesVotes');
+                localStorage.removeItem('noVotes');
+                updateDisplay();
+            }
         }
 
         // Close overlay if clicked outside
@@ -166,6 +294,7 @@
                     closeOverlay();
                 }
             });
+            updateDisplay();
         });
     </script>
 </body>
