@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Valentine's Day Animation</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js"></script>
     <style>
         body {
             display: flex;
@@ -184,20 +181,6 @@
     </div>
 
     <script>
-        // Firebase configuration - Replace with your own config from Firebase Console
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
-        };
-
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
         const messages = [
             "Just think about it!",
             "If you say no, I will be really sad..",
@@ -206,9 +189,19 @@
         ];
         let messageIndex = 0;
 
-        function updateDisplay(data) {
-            const yesVotes = data.yesVotes || [];
-            const noVotes = data.noVotes || [];
+        function loadVotes() {
+            const yesVotes = JSON.parse(localStorage.getItem('yesVotes')) || [];
+            const noVotes = JSON.parse(localStorage.getItem('noVotes')) || [];
+            return { yesVotes, noVotes };
+        }
+
+        function saveVotes(yesVotes, noVotes) {
+            localStorage.setItem('yesVotes', JSON.stringify(yesVotes));
+            localStorage.setItem('noVotes', JSON.stringify(noVotes));
+        }
+
+        function updateDisplay() {
+            const { yesVotes, noVotes } = loadVotes();
             document.getElementById('yesCount').textContent = yesVotes.length;
             document.getElementById('noCount').textContent = noVotes.length;
 
@@ -231,21 +224,16 @@
             });
         }
 
-        async function recordVote(vote) {
+        function recordVote(vote) {
             const name = document.getElementById('nameInput').value.trim();
             if (!name) {
                 return; // Skip voting if no name, but allow original behavior
             }
 
-            const docRef = db.collection('votes').doc('data');
-            const doc = await docRef.get();
-            const data = doc.exists ? doc.data() : { yesVotes: [], noVotes: [] };
-            const yesVotes = data.yesVotes || [];
-            const noVotes = data.noVotes || [];
+            const { yesVotes, noVotes } = loadVotes();
 
             if (yesVotes.includes(name) || noVotes.includes(name)) {
-                alert('You have already voted.');
-                return;
+                return; // Already voted, skip
             }
 
             if (vote === 'yes') {
@@ -254,7 +242,8 @@
                 noVotes.push(name);
             }
 
-            await docRef.set({ yesVotes, noVotes });
+            saveVotes(yesVotes, noVotes);
+            updateDisplay();
             document.getElementById('nameInput').value = '';
         }
 
@@ -289,9 +278,11 @@
             document.getElementById("success-message").style.display = "none";
         }
 
-        async function resetVotes() {
+        function resetVotes() {
             if (confirm('Are you sure you want to reset all votes?')) {
-                await db.collection('votes').doc('data').set({ yesVotes: [], noVotes: [] });
+                localStorage.removeItem('yesVotes');
+                localStorage.removeItem('noVotes');
+                updateDisplay();
             }
         }
 
@@ -303,12 +294,7 @@
                     closeOverlay();
                 }
             });
-
-            // Listen for real-time updates
-            db.collection('votes').doc('data').onSnapshot((doc) => {
-                const data = doc.exists ? doc.data() : { yesVotes: [], noVotes: [] };
-                updateDisplay(data);
-            });
+            updateDisplay();
         });
     </script>
 </body>
